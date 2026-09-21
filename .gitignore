@@ -1,0 +1,14 @@
+# WorkBuddy 工具目录（不参与版本控制）
+.workbuddy/
+
+# 编辑器临时文件
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# 系统临时文件
+*.tmp
+*.bak
+*.log

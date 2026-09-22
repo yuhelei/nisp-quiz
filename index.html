@@ -7,42 +7,46 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="format-detection" content="telephone=no">
   <title>NISP 刷题</title>
+  <!-- 内联 favicon，避免 file:// 或静态服务下的 404 -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📝</text></svg>">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- 顶部标题栏 -->
-  <header id="topbar" class="topbar">
-    <div class="topbar-inner">
-      <div id="page-title" class="topbar-title">NISP 刷题</div>
-      <div class="topbar-actions">
-        <a href="#/stats" class="topbar-btn" aria-label="学习统计">📊</a>
+  <!-- .app 容器：承载 PC 端 960px 居中 + 底部安全区留白 -->
+  <div class="app">
+    <!-- 顶部标题栏 -->
+    <header id="topbar" class="topbar">
+      <div class="topbar-inner">
+        <div class="topbar-actions left" id="topbar-back"></div>
+        <div id="page-title" class="topbar-title">NISP 刷题</div>
+        <div class="topbar-actions right">
+          <a href="#/stats" class="topbar-btn" aria-label="学习统计">📊</a>
+        </div>
       </div>
-    </div>
-  </header>
+    </header>
 
-  <!-- 主内容区 -->
-  <main id="main" class="main">
-    <!-- 视图通过 app.js 注入 -->
-  </main>
+    <!-- 主内容区：视图由 app.js 渲染 -->
+    <main id="main" class="main"></main>
 
-  <!-- 底部导航栏 -->
-  <nav id="bottombar" class="bottom-bar">
-    <a href="#/home"     class="nav-item" data-nav="home">
-      <div class="nav-icon">🏠</div><div class="nav-label">首页</div>
-    </a>
-    <a href="#/chapter"  class="nav-item" data-nav="chapter">
-      <div class="nav-icon">📚</div><div class="nav-label">练习</div>
-    </a>
-    <a href="#/exam"     class="nav-item" data-nav="exam">
-      <div class="nav-icon">📝</div><div class="nav-label">考试</div>
-    </a>
-    <a href="#/wrong"    class="nav-item" data-nav="wrong">
-      <div class="nav-icon">❌</div><div class="nav-label">错题</div>
-    </a>
-    <a href="#/favorite" class="nav-item" data-nav="favorite">
-      <div class="nav-icon">⭐</div><div class="nav-label">收藏</div>
-    </a>
-  </nav>
+    <!-- 底部导航栏（练习/考试等页面会被隐藏，改由操作栏接管） -->
+    <nav id="bottombar" class="nav-bar">
+      <a href="#/home"     class="nav-item" data-nav="home">
+        <div class="nav-icon">🏠</div><div class="nav-label">首页</div>
+      </a>
+      <a href="#/chapter"  class="nav-item" data-nav="chapter">
+        <div class="nav-icon">📚</div><div class="nav-label">练习</div>
+      </a>
+      <a href="#/exam"     class="nav-item" data-nav="exam">
+        <div class="nav-icon">📝</div><div class="nav-label">考试</div>
+      </a>
+      <a href="#/wrong"    class="nav-item" data-nav="wrong">
+        <div class="nav-icon">❌</div><div class="nav-label">错题</div>
+      </a>
+      <a href="#/favorite" class="nav-item" data-nav="favorite">
+        <div class="nav-icon">⭐</div><div class="nav-label">收藏</div>
+      </a>
+    </nav>
+  </div>
 
   <!-- 题库数据 -->
   <script src="data/questions.js"></script>
@@ -56,16 +60,16 @@
   <script>
     (function () {
       'use strict';
-      // 防御性检查
+      var mainEl = document.getElementById('main');
       if (!window.QUESTIONS_RAW || !window.QUESTIONS_RAW.length) {
-        document.getElementById('main').innerHTML =
-          '<div class="empty-card"><h2>题库加载失败</h2>' +
+        mainEl.innerHTML =
+          '<div class="empty-state"><h2>题库加载失败</h2>' +
           '<p>请检查 <code>data/questions.js</code> 是否存在且格式正确。</p></div>';
         return;
       }
       if (!window.Storage || !window.Router || !window.App) {
-        document.getElementById('main').innerHTML =
-          '<div class="empty-card"><h2>脚本加载失败</h2>' +
+        mainEl.innerHTML =
+          '<div class="empty-state"><h2>脚本加载失败</h2>' +
           '<p>请检查 <code>js/</code> 目录下的脚本是否能正确加载。</p></div>';
         return;
       }

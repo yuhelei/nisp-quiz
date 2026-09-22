@@ -79,11 +79,13 @@
 
   /**
    * 解析当前路径（去掉 query）
+   * 注意：必须先在去掉 # 的字符串上找 ?，否则索引会偏移 1 位，
+   * 导致 '#/practice?mode=xxx' 被解析成 '/practice?' 而匹配失败
    */
   function currentPathOnly() {
     var hash = location.hash || '';
-    var qIdx = hash.indexOf('?');
     var p = hash.replace(/^#/, '');
+    var qIdx = p.indexOf('?');
     if (qIdx !== -1) p = p.slice(0, qIdx);
     if (!p) p = '/home';
     return p;

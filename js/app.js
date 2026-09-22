@@ -120,11 +120,14 @@
     setTitle('NISP 刷题');
     activeNav('home');
     var s = Storage.getStats();
+    var bankTotal = QUESTIONS.length;
+    // 精简为 4 个核心统计
+    var total = s.totalAnswered || 0;
+    var correct = s.totalCorrect || 0;
     var stats = [
+      { label: '累计答题', value: total + ' 题' },
+      { label: '累计正确率', value: total ? Math.round((correct / total) * 100) + '%' : '0%' },
       { label: '今日答题', value: (s.todayAnswered || 0) + ' 题' },
-      { label: '今日正确率', value: s.todayAnswered ? Math.round(((s.todayCorrect || 0) / s.todayAnswered) * 100) + '%' : '0%' },
-      { label: '累计正确率', value: s.totalAnswered ? Math.round(((s.totalCorrect || 0) / s.totalAnswered) * 100) + '%' : '0%' },
-      { label: '连续学习', value: (s.streakDays || 0) + ' 天' },
       { label: '考试最高', value: Math.max(s.examBest.km1 || 0, s.examBest.km4 || 0) + ' 分' },
     ];
     var statsHtml = stats.map(function (x) {
@@ -134,28 +137,18 @@
       '</div>';
     }).join('');
 
-    var chaptersHtml = CHAPTER_LIST.map(function (c) {
-      return '<div class="chapter-card" data-chapter="' + escapeHtml(c.name) + '">' +
-        '<div class="chapter-name">' + escapeHtml(c.name) + '</div>' +
-        '<div class="chapter-count">' + c.count + ' 题</div>' +
-        '<button class="btn btn-primary btn-sm" data-action="chapter-practice" data-chapter="' + escapeHtml(c.name) + '">开始练习</button>' +
-      '</div>';
-    }).join('');
-
-    var total = QUESTIONS.length;
     var wrong = Object.keys(Storage.getWrong()).length;
     var fav = Storage.getFavorite().length;
-    var examCount = Storage.getExamHistory().length;
 
     var html = '' +
       '<div class="home-header">' +
         '<div class="home-title">NISP 备考刷题</div>' +
-        '<div class="home-subtitle">共 ' + total + ' 道题 · 涵盖 6 个章节</div>' +
+        '<div class="home-subtitle">共 ' + bankTotal + ' 道题 · 涵盖 6 个章节</div>' +
       '</div>' +
 
       '<div class="stats-grid">' + statsHtml + '</div>' +
 
-      '<div class="section-title">核心功能</div>' +
+      '<div class="section-title">刷题入口</div>' +
       '<div class="entry-grid">' +
         entryCard('顺序练习', '按题目顺序逐题作答', '📘', '#/practice?mode=sequence') +
         entryCard('随机练习', '随机抽题练习', '🎲', '#/practice?mode=random') +
@@ -163,22 +156,11 @@
         entryCard('模拟考试', '限时模拟考', '📝', '#/exam') +
         entryCard('错题本', '回顾做错题 · ' + wrong + ' 题', '❌', '#/wrong') +
         entryCard('我的收藏', '收藏重点题 · ' + fav + ' 题', '⭐', '#/favorite') +
-        entryCard('考试记录', '历史成绩 · ' + examCount + ' 次', '📊', '#/history') +
-        entryCard('学习统计', '查看学习数据', '📈', '#/stats') +
       '</div>' +
 
-      '<div class="section-title">章节练习</div>' +
-      '<div class="chapter-grid">' + chaptersHtml + '</div>';
+      '<div class="home-foot">NISP 备考刷题 · 数据保存在本地浏览器</div>';
 
     main().innerHTML = html;
-
-    // 绑定章节开始
-    document.querySelectorAll('[data-action="chapter-practice"]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var ch = btn.getAttribute('data-chapter');
-        location.hash = '#/practice?mode=chapter&chapter=' + encodeURIComponent(ch);
-      });
-    });
   }
 
   function entryCard(title, desc, icon, href) {
@@ -215,17 +197,33 @@
     var list = [];
     var title = '';
 
+    // keep=1 表示「保留当前练习进度」（用于答题卡/错题本/收藏页跳回练习时定位）
+    var keep = query.keep === '1';
+    function canReuse() {
+      if (!keep || !Practice) return false;
+      if (Practice.mode !== mode) return false;
+      if (mode === 'chapter' && Practice.opts.chapter !== query.chapter) return false;
+      Practice.finished = false; // 允许从完成页回到练习继续查看
+      return true;
+    }
+
     if (mode === 'sequence') {
-      list = QUESTIONS.slice();
       title = '顺序练习';
+      if (canReuse()) {
+        setTitle(title); activeNav('practice'); renderQuestion(); return;
+      }
+      list = QUESTIONS.slice();
       // 续做进度
       var prog = Storage.getProgress('km1');
       var resumeIdx = prog.idx || 0;
       Practice = newPractice(list, mode, { resumeIdx: resumeIdx });
       Practice.idx = Math.min(resumeIdx, list.length - 1);
     } else if (mode === 'random') {
-      list = shuffle(QUESTIONS);
       title = '随机练习';
+      if (canReuse()) {
+        setTitle(title); activeNav('practice'); renderQuestion(); return;
+      }
+      list = shuffle(QUESTIONS);
       Practice = newPractice(list, mode);
     } else if (mode === 'chapter') {
       var ch = query.chapter;
@@ -234,8 +232,11 @@
         location.hash = '#/chapter';
         return;
       }
-      list = byChapter(ch);
       title = ch;
+      if (canReuse()) {
+        setTitle(title); activeNav('practice'); renderQuestion(); return;
+      }
+      list = byChapter(ch);
       Practice = newPractice(list, mode, { chapter: ch });
     } else if (mode === 'wrong') {
       var ids = Object.keys(Storage.getWrong());
@@ -244,8 +245,11 @@
         setTitle('错题练习');
         return;
       }
+      title = '错题重练 (' + ids.length + ')';
+      if (canReuse()) {
+        setTitle(title); activeNav('practice'); renderQuestion(); return;
+      }
       list = byIds(ids);
-      title = '错题重练 (' + list.length + ')';
       Practice = newPractice(list, mode);
     } else if (mode === 'favorite') {
       var ids2 = Storage.getFavorite();
@@ -254,8 +258,11 @@
         setTitle('收藏练习');
         return;
       }
+      title = '收藏练习 (' + ids2.length + ')';
+      if (canReuse()) {
+        setTitle(title); activeNav('practice'); renderQuestion(); return;
+      }
       list = byIds(ids2);
-      title = '收藏练习 (' + list.length + ')';
       Practice = newPractice(list, mode);
     } else {
       location.hash = '#/home';
@@ -275,7 +282,8 @@
     var idx = Practice.idx + 1;
     var progressPct = Math.round((idx / total) * 100);
     var ua = Practice.userAnswers[q.id] || [];
-    var locked = ua.length > 0; // 已作答
+    // locked：仅在答错时为 true。答对会立即跳走，不会渲染 locked 状态
+    var locked = ua.length > 0;
     var correctNow = locked ? isCorrect(q, ua) : false;
 
     var typeText = q.type === 'multiple' ? '【多选】' : (q.type === 'judge' ? '【判断】' : '【单选】');
@@ -315,53 +323,74 @@
       '</div>' +
 
       (locked ? (
-        '<div class="analysis ' + (correctNow ? 'ok' : 'err') + '">' +
-          '<div class="analysis-status">' + (correctNow ? '✓ 回答正确' : '✗ 回答错误') + '</div>' +
-          '<div class="analysis-text"><strong>正确答案：</strong>' + escapeHtml(q.answer.join('、')) + '</div>' +
+        '<div class="analysis err">' +
+          '<div class="analysis-status">✗ 回答错误 · 正确答案：' + escapeHtml(q.answer.join('、')) + '</div>' +
           (q.analysis ? '<div class="analysis-text"><strong>解析：</strong>' + escapeHtml(q.analysis) + '</div>' : '') +
         '</div>'
       ) : '');
 
     var bottomBar = '';
-    if (q.type === 'multiple') {
-      bottomBar = locked ? bottomButtons() : (
-        '<div class="bottom-bar"><button class="btn btn-primary btn-block" data-action="confirm">确认答案</button></div>'
-      );
+    if (locked) {
+      // 答错：停留展示解析，提供答题卡 + 下一题
+      bottomBar = '<div class="bottom-bar"><div class="btn-row">' +
+        '<button class="btn btn-ghost" data-action="card">答题卡</button>' +
+        '<button class="btn btn-primary" data-action="next">' + (Practice.idx >= total - 1 ? '完成练习 ›' : '下一题 ›') + '</button>' +
+      '</div></div>';
+    } else if (q.type === 'multiple') {
+      // 多选未确认：显示确认按钮
+      bottomBar = '<div class="bottom-bar"><button class="btn btn-primary btn-block" data-action="confirm">确认答案</button></div>';
     } else {
-      bottomBar = bottomButtons();
+      // 单选/判断未作答：底部留空（题目本身就是交互）
+      bottomBar = '';
     }
     html += bottomBar;
 
     main().innerHTML = html;
 
-    // 绑定事件
+    // 绑定选项事件
     document.querySelectorAll('.option').forEach(function (el) {
       el.addEventListener('click', function () {
         if (el.classList.contains('locked')) return;
         var label = el.getAttribute('data-label');
         var qid = el.getAttribute('data-qid');
         if (q.type === 'multiple') {
+          // 多选：累加选项，不立即判分
           var cur = Practice.userAnswers[qid] || [];
           var i = cur.indexOf(label);
           if (i === -1) cur.push(label); else cur.splice(i, 1);
           Practice.userAnswers[qid] = cur;
-          // 临时更新 UI（不锁定）
+          // 临时更新 picked 样式
           document.querySelectorAll('.option').forEach(function (e2) {
             e2.classList.toggle('picked', Practice.userAnswers[qid].indexOf(e2.getAttribute('data-label')) !== -1);
           });
         } else {
-          // 单选 / 判断：直接判题
+          // 单选/判断：答对立即跳下一题，答错停留展示解析
           Practice.userAnswers[qid] = [label];
           var correct = isCorrect(q, [label]);
           Storage.recordAnswer(correct);
-          if (!correct) {
+          if (correct) {
+            // 答对了：toast + 跳下一题
+            showToast('✓ 答对了', 'success', 600);
+            setTimeout(function () {
+              if (Practice.idx < Practice.list.length - 1) {
+                Practice.idx++;
+                if (Practice.mode === 'sequence') {
+                  Storage.setProgress('km1', { idx: Practice.idx, lastTs: Date.now() });
+                }
+                renderQuestion();
+              } else {
+                // 最后一题答对了
+                finishPractice();
+              }
+            }, 550);
+          } else {
+            // 答错了：加入错题本 + 渲染当前题展示解析
             Storage.addWrong(qid, [label]);
+            if (Practice.mode === 'sequence') {
+              Storage.setProgress('km1', { idx: Practice.idx, lastTs: Date.now() });
+            }
+            renderQuestion();
           }
-          // 顺序练习时保存进度
-          if (Practice.mode === 'sequence') {
-            Storage.setProgress('km1', { idx: Practice.idx, lastTs: Date.now() });
-          }
-          renderQuestion();
         }
       });
     });
@@ -371,27 +400,34 @@
       confirmBtn.addEventListener('click', function () {
         var ua = Practice.userAnswers[q.id] || [];
         if (ua.length === 0) {
-          alert('请至少选择一个选项');
+          showToast('请至少选择一个选项', 'error', 1200);
           return;
         }
         var correct = isCorrect(q, ua);
         Storage.recordAnswer(correct);
-        if (!correct) {
+        if (correct) {
+          showToast('✓ 答对了', 'success', 600);
+          setTimeout(function () {
+            if (Practice.idx < Practice.list.length - 1) {
+              Practice.idx++;
+              if (Practice.mode === 'sequence') {
+                Storage.setProgress('km1', { idx: Practice.idx, lastTs: Date.now() });
+              }
+              renderQuestion();
+            } else {
+              finishPractice();
+            }
+          }, 550);
+        } else {
           Storage.addWrong(q.id, ua);
-        }
-        renderQuestion();
-      });
-    }
-
-    var prev = document.querySelector('[data-action="prev"]');
-    if (prev) {
-      prev.addEventListener('click', function () {
-        if (Practice.idx > 0) {
-          Practice.idx--;
+          if (Practice.mode === 'sequence') {
+            Storage.setProgress('km1', { idx: Practice.idx, lastTs: Date.now() });
+          }
           renderQuestion();
         }
       });
     }
+
     var next = document.querySelector('[data-action="next"]');
     if (next) {
       next.addEventListener('click', function () {
@@ -418,6 +454,26 @@
         favBtn.textContent = added ? '★' : '☆';
       });
     }
+  }
+
+  /**
+   * 顶部中央 toast 提示
+   * @param {string} text 提示文字
+   * @param {'success'|'error'|''} type 样式类型
+   * @param {number} duration 持续时间（毫秒）
+   */
+  function showToast(text, type, duration) {
+    duration = duration || 800;
+    var old = document.querySelector('.toast');
+    if (old) old.remove();
+    var toast = document.createElement('div');
+    toast.className = 'toast toast-' + (type || 'info');
+    toast.textContent = text;
+    document.body.appendChild(toast);
+    setTimeout(function () {
+      toast.classList.add('toast-hide');
+      setTimeout(function () { if (toast.parentNode) toast.remove(); }, 200);
+    }, duration);
   }
 
   function bottomButtons() {
@@ -498,12 +554,14 @@
     document.querySelectorAll('.card-cell').forEach(function (cell) {
       cell.addEventListener('click', function () {
         Practice.idx = parseInt(cell.getAttribute('data-idx'), 10);
-        location.hash = '#/practice?mode=' + Practice.mode + (Practice.opts.chapter ? '&chapter=' + encodeURIComponent(Practice.opts.chapter) : '');
+        location.hash = '#/practice?mode=' + Practice.mode +
+          (Practice.opts.chapter ? '&chapter=' + encodeURIComponent(Practice.opts.chapter) : '') + '&keep=1';
       });
     });
     var cont = document.querySelector('[data-action="continue"]');
     if (cont) cont.addEventListener('click', function () {
-      location.hash = '#/practice?mode=' + Practice.mode + (Practice.opts.chapter ? '&chapter=' + encodeURIComponent(Practice.opts.chapter) : '');
+      location.hash = '#/practice?mode=' + Practice.mode +
+        (Practice.opts.chapter ? '&chapter=' + encodeURIComponent(Practice.opts.chapter) : '') + '&keep=1';
     });
   }
 
@@ -839,16 +897,15 @@
 
     document.querySelectorAll('.wrong-item').forEach(function (el) {
       el.addEventListener('click', function () {
-        // 跳转到对应题目练习
+        // 跳转到对应题目练习（keep=1 保留定位）
         var qid = el.getAttribute('data-qid');
         var q = byId(qid);
         if (!q) return;
-        // 直接进入练习题号
         var ids = Object.keys(Storage.getWrong());
         var idx = ids.indexOf(qid);
         Practice = newPractice(byIds(ids), 'wrong');
         Practice.idx = Math.max(0, idx);
-        location.hash = '#/practice?mode=wrong';
+        location.hash = '#/practice?mode=wrong&keep=1';
       });
     });
   }
@@ -907,7 +964,7 @@
         var idx = ids.indexOf(qid);
         Practice = newPractice(byIds(ids), 'favorite');
         Practice.idx = Math.max(0, idx);
-        location.hash = '#/practice?mode=favorite';
+        location.hash = '#/practice?mode=favorite&keep=1';
       });
     });
   }
@@ -1051,18 +1108,56 @@
   }
 
   // ============== 路由注册 ==============
+  /**
+   * 底部导航栏显隐控制
+   * 练习/考试等页面有独立操作栏，需隐藏导航栏避免重叠
+   */
+  function setNavVisible(show) {
+    var nav = document.getElementById('bottombar');
+    if (nav) nav.style.display = show ? '' : 'none';
+  }
+
+  /**
+   * 顶部返回按钮显隐控制
+   * 当底部导航被隐藏时，在标题栏左侧给出返回首页入口
+   */
+  function setBackButton(show) {
+    var box = document.getElementById('topbar-back');
+    if (!box) return;
+    if (!show) { box.innerHTML = ''; return; }
+    box.innerHTML = '<button class="topbar-btn" data-action="topbar-back" aria-label="返回首页">‹</button>';
+    var btn = box.querySelector('[data-action="topbar-back"]');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        location.hash = '#/home';
+      });
+    }
+  }
+
+  /**
+   * 包装路由处理函数，进入时同步导航栏/返回按钮
+   */
+  function withNav(show, fn) {
+    return function (p, q) {
+      setNavVisible(show);
+      setBackButton(!show); // 隐藏底部导航时，顶部给返回按钮
+      fn(p, q);
+    };
+  }
+
   function registerRoutes() {
-    Router.register('/home', function () { renderHome(); });
-    Router.register('/chapter', function () { renderChapter(); });
-    Router.register('/practice', function (p, q) { renderPractice(p, q); });
-    Router.register('/card', function () { renderCard(); });
-    Router.register('/exam', function (p, q) { renderExam(p, q); });
-    Router.register('/exam-card', function () { renderExamCard(); });
-    Router.register('/wrong', function () { renderWrong(); });
-    Router.register('/favorite', function () { renderFavorite(); });
-    Router.register('/stats', function () { renderStats(); });
-    Router.register('/history', function () { renderHistory(); });
-    Router.register('/result', function (p, q) { renderResult(p, q); });
+    Router.register('/home',     withNav(true,  renderHome));
+    Router.register('/chapter',  withNav(true,  renderChapter));
+    Router.register('/wrong',    withNav(true,  renderWrong));
+    Router.register('/favorite', withNav(true,  renderFavorite));
+    Router.register('/stats',    withNav(true,  renderStats));
+    Router.register('/history',  withNav(true,  renderHistory));
+    Router.register('/result',   withNav(true,  renderResult));
+    // 以下页面自带底部操作栏
+    Router.register('/practice',  withNav(false, renderPractice));
+    Router.register('/card',      withNav(false, renderCard));
+    Router.register('/exam',      withNav(false, renderExam));
+    Router.register('/exam-card', withNav(false, renderExamCard));
   }
 
   // ============== 启动 ==============

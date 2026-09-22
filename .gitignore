@@ -1,6 +1,9 @@
 # WorkBuddy 工具目录（不参与版本控制）
 .workbuddy/
 
+# 本地临时文档
+UPLOAD_TO_GITHUB.md
+
 # 编辑器临时文件
 *.swp
 *.swo

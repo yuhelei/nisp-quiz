@@ -788,3 +788,75 @@ button { font-family: inherit; cursor: pointer; }
   from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
   to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
+
+/* ============== 登录页 ============== */
+.login-page {
+  min-height: calc(100vh - 120px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+}
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 36px 28px;
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+.login-logo { font-size: 44px; line-height: 1; margin-bottom: 10px; }
+.login-title { font-size: 22px; font-weight: 700; color: var(--text); }
+.login-sub { font-size: 13px; color: var(--text-secondary); margin: 6px 0 24px; }
+.login-field { margin-bottom: 12px; }
+.login-field input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.login-field input:focus { border-color: var(--primary); background: var(--card); }
+.login-remember {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 4px 0 16px;
+  cursor: pointer;
+  user-select: none;
+}
+.login-remember input { accent-color: var(--primary); width: 16px; height: 16px; }
+.login-msg {
+  min-height: 20px;
+  font-size: 13px;
+  color: var(--danger);
+  margin-bottom: 8px;
+  text-align: left;
+}
+.login-foot {
+  margin-top: 18px;
+  font-size: 12px;
+  color: var(--text-light);
+  line-height: 1.7;
+}
+.login-foot-off { color: var(--warning); }
+
+/* ============== 按压反弹按钮 ============== */
+/* 按下：快速缩小；松开：带过冲曲线弹性回弹 */
+.btn-bounce {
+  transition: transform 0.45s cubic-bezier(0.34, 1.9, 0.64, 1);
+  will-change: transform;
+}
+.btn-bounce:active {
+  transform: scale(0.88);
+  transition-duration: 0.08s;
+  transition-timing-function: ease-out;
+}

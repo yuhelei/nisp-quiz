@@ -38,10 +38,16 @@
 
   /**
    * 安全写入 JSON。失败时静默降级到控制台。
+   * 写入成功后触发 onChange 钩子（由 auth.js 设置，用于云端同步）；
+   * pauseSync = true 期间（云端导入）不触发，避免回环。
    */
   function writeJSON(key, value) {
     try {
       localStorage.setItem(key, JSON.stringify(value));
+      var api = global.Storage;
+      if (api && api.onChange && !api.pauseSync) {
+        try { api.onChange(key, value); } catch (e) {}
+      }
     } catch (e) {
       console.warn('[storage] write fail:', key, e);
     }
@@ -245,6 +251,14 @@
     });
   }
 
+  // ============ 批量写入（云端同步用，auth.js 调用） ============
+
+  function setWrong(map) { writeJSON(KEYS.WRONG, map || {}); }
+  function setFavorite(arr) { writeJSON(KEYS.FAVORITE, arr || []); }
+  function setExamHistory(list) { writeJSON(KEYS.EXAM, list || []); }
+  /** 是否处于云端导入状态（导入期间不触发 onChange） */
+  var pauseSync = false;
+
   /**
    * 暴露接口
    */
@@ -270,6 +284,11 @@
     getExamHistory: getExamHistory,
     saveExam: saveExam,
     getExamById: getExamById,
+    setExamHistory: setExamHistory,
+    // batch write（云端同步）
+    setWrong: setWrong,
+    setFavorite: setFavorite,
+    pauseSync: false,
     // stats
     getStats: getStats,
     setStats: setStats,

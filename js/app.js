@@ -1138,6 +1138,17 @@
         '<div class="meta-item">收藏：' + fav.length + ' 题</div>' +
       '</div>' +
 
+      '<div class="section-title">账号</div>' +
+      '<div class="list-wrap">' +
+        (Auth.token()
+          ? '<div class="meta-item account-item">' +
+              '<div>当前用户：<strong>' + escapeHtml(Auth.username() || '未知') + '</strong></div>' +
+              '<div class="exam-info-meta">数据已同步到本机 MySQL</div>' +
+            '</div>' +
+            '<div style="padding:12px 16px"><button class="btn btn-ghost btn-block" data-action="logout">退出登录</button></div>'
+          : '<div class="meta-item">未登录（离线模式）· <a href="#/login">去登录 ›</a></div>') +
+      '</div>' +
+
       '<div class="section-title">危险操作</div>' +
       '<div class="list-wrap">' +
         '<button class="btn btn-danger btn-block" data-action="clear-all">⚠️ 清空全部数据</button>' +
@@ -1159,6 +1170,15 @@
         Storage.clearAll();
         location.reload();
       }
+    });
+
+    var logout = document.querySelector('[data-action="logout"]');
+    if (logout) logout.addEventListener('click', function () {
+      Auth.api('/logout', { method: 'POST', timeout: 3000 }).then(function () {
+        Auth.signOut();
+        showToast('已退出登录', 'info');
+        location.hash = '#/login';
+      });
     });
   }
 
@@ -1279,6 +1299,120 @@
     Router.register('/card',      withNav(false, renderCard));
     Router.register('/exam',      withNav(false, renderExam));
     Router.register('/exam-card', withNav(false, renderExamCard));
+    // 登录页：自带全屏卡片布局，隐藏顶栏与底栏
+    Router.register('/login', renderLogin);
+  }
+
+  // ============== 登录页 ==============
+
+  /**
+   * 登录 / 注册页（后端开启且未登录时显示）
+   * 记住密码：token 存 localStorage，30 天内打开直接进首页
+   */
+  function renderLogin() {
+    setNavVisible(false);
+    setBackButton(false);
+    setTitle('登录');
+    document.getElementById('topbar').style.display = 'none';
+    var offline = !Auth.state.online;
+    var html = '' +
+      '<div class="login-page">' +
+        '<div class="login-card">' +
+          '<div class="login-logo">📝</div>' +
+          '<div class="login-title">NISP 刷题</div>' +
+          '<div class="login-sub">登录后多端同步进度 · 错题 · 收藏</div>' +
+          '<div class="login-field">' +
+            '<input id="login-user" type="text" placeholder="用户名（2-20 位）" maxlength="20" autocomplete="username">' +
+          '</div>' +
+          '<div class="login-field">' +
+            '<input id="login-pass" type="password" placeholder="密码（至少 6 位）" autocomplete="current-password">' +
+          '</div>' +
+          '<label class="login-remember">' +
+            '<input type="checkbox" id="login-remember" checked>' +
+            '<span>记住密码，30 天内免登录</span>' +
+          '</label>' +
+          '<div class="login-msg" id="login-msg"></div>' +
+          '<button class="btn btn-primary btn-block btn-bounce" id="login-btn">登 录</button>' +
+          '<button class="btn btn-ghost btn-block" id="register-btn" style="margin-top:10px">注册新账号</button>' +
+          (offline
+            ? '<div class="login-foot login-foot-off">⚠️ 服务器未开启，当前为离线模式</div>' +
+              '<button class="btn btn-ghost btn-block" id="offline-btn" style="margin-top:10px">先离线刷题 ›</button>'
+            : '<div class="login-foot">密码加密存储 · 数据保存在本机 MySQL</div>') +
+        '</div>' +
+      '</div>';
+    main().innerHTML = html;
+
+    function doLogin(isRegister) {
+      var u = $('login-user').value.trim();
+      var p = $('login-pass').value;
+      var remember = $('login-remember').checked;
+      var msg = $('login-msg');
+      msg.textContent = '';
+      if (!u || !p) { msg.textContent = '请输入用户名和密码'; return; }
+      var btn = $(isRegister ? 'register-btn' : 'login-btn');
+      btn.disabled = true;
+      btn.textContent = isRegister ? '注册中…' : '登录中…';
+      Auth.api(isRegister ? '/register' : '/login', {
+        method: 'POST',
+        body: { username: u, password: p },
+        timeout: 6000,
+      }).then(function (r) {
+        btn.disabled = false;
+        btn.textContent = isRegister ? '注册新账号' : '登 录';
+        if (r.ok) {
+          Auth.signIn(r.token, r.username, remember);
+          document.getElementById('topbar').style.display = '';
+          showToast((isRegister ? '注册成功，欢迎 ' : '欢迎回来，') + r.username, 'success');
+          Sync.pull().then(function () {
+            location.hash = '#/home';
+            renderHome();
+          });
+        } else {
+          msg.textContent = (r.offline ? '无法连接服务器，请确认已启动' : (r.msg || '操作失败'));
+        }
+      });
+    }
+
+    $('login-btn').addEventListener('click', function () { doLogin(false); });
+    $('register-btn').addEventListener('click', function () { doLogin(true); });
+    var ob = $('offline-btn');
+    if (ob) ob.addEventListener('click', function () {
+      document.getElementById('topbar').style.display = '';
+      location.hash = '#/home';
+    });
+    // 回车提交登录
+    ['login-user', 'login-pass'].forEach(function (id) {
+      var el = $(id);
+      if (el) el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') doLogin(false);
+      });
+    });
+    setTimeout(function () { var el = $('login-user'); if (el) el.focus(); }, 50);
+  }
+
+  /**
+   * 启动流程：
+   *   1. 先渲染当前路由（保证离线可用）
+   *   2. 探测后端：在线 + 无 token → 跳登录页；在线 + 有 token → 静默校验并同步数据
+   */
+  function boot() {
+    Router.start('#/home');
+    Auth.probe().then(function (online) {
+      if (!online) {
+        showToast('服务器未开启，本地离线模式', 'info');
+        return;
+      }
+      if (Auth.token()) {
+        // 已登录：静默拉取云端数据，首页数据若被覆盖则刷新
+        Sync.pull().then(function (src) {
+          if (src === 'server' && (location.hash === '#/home' || location.hash === '' || location.hash === '#')) {
+            renderHome();
+          }
+        });
+      } else {
+        location.hash = '#/login';
+      }
+    });
   }
 
   // ============== 启动 ==============
@@ -1289,7 +1423,7 @@
       registerRoutes();
       bindSwipeNav();
       bindKeyboardNav();
-      Router.start('#/home');
+      boot();
     },
   };
 

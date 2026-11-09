@@ -116,6 +116,16 @@
   }
 
   // ============== 首页 ==============
+  function greeting() {
+    var h = new Date().getHours();
+    if (h < 6) return '夜深了';
+    if (h < 9) return '早上好';
+    if (h < 12) return '上午好';
+    if (h < 14) return '中午好';
+    if (h < 18) return '下午好';
+    return '晚上好';
+  }
+
   function renderHome() {
     setTitle('NISP 刷题');
     activeNav('home');
@@ -140,44 +150,57 @@
     var wrong = Object.keys(Storage.getWrong()).length;
     var fav = Storage.getFavorite().length;
 
+    var uname = (global.Auth && Auth.token()) ? (Auth.username() || '') : '';
+    var progIdx = Storage.getProgress('km1').idx || 0;
+    var pct = Math.min(100, Math.round((progIdx / bankTotal) * 100));
+
     var html = '' +
       '<div class="home-header">' +
-        '<div class="home-title">NISP 备考刷题</div>' +
-        '<div class="home-subtitle">共 ' + bankTotal + ' 道题 · 涵盖 6 个章节</div>' +
+        '<div class="home-header-row">' +
+          '<div class="home-greet-box">' +
+            '<div class="home-greet">' + greeting() + (uname ? '，' + escapeHtml(uname) : '') + '</div>' +
+            '<div class="home-subtitle">共 ' + bankTotal + ' 道题 · 涵盖 6 个章节</div>' +
+          '</div>' +
+          '<a class="home-avatar" href="#/mine">' + escapeHtml(uname ? uname.slice(0, 1).toUpperCase() : '我') + '</a>' +
+        '</div>' +
+        '<div class="home-progress">' +
+          '<div class="home-progress-row">' +
+            '<span>顺序练习进度</span>' +
+            '<span class="home-progress-num">' + progIdx + ' / ' + bankTotal + '</span>' +
+          '</div>' +
+          '<div class="home-progress-track"><div class="home-progress-fill" style="width:' + pct + '%"></div></div>' +
+        '</div>' +
       '</div>' +
 
       '<div class="stats-grid">' + statsHtml + '</div>' +
 
       '<div class="section-title">刷题入口</div>' +
       '<div class="entry-grid">' +
-        entryCard('顺序练习', '按题目顺序逐题作答', '📘', '#/practice?mode=sequence') +
-        entryCard('随机练习', '随机抽题练习', '🎲', '#/practice?mode=random') +
-        entryCard('章节练习', '按章节专项练习', '📑', '#/chapter') +
-        entryCard('模拟考试', '限时模拟考', '📝', '#/exam') +
-        entryCard('错题本', '回顾做错题 · ' + wrong + ' 题', '❌', '#/wrong') +
-        entryCard('我的收藏', '收藏重点题 · ' + fav + ' 题', '⭐', '#/favorite') +
+        entryCard('顺序练习', '按题目顺序逐题作答', '📘', '#/practice?mode=sequence', 'blue') +
+        entryCard('随机练习', '随机抽题练习', '🎲', '#/practice?mode=random', 'violet') +
+        entryCard('章节练习', '按章节专项练习', '📑', '#/chapter', 'teal') +
+        entryCard('模拟考试', '限时模拟考', '📝', '#/exam', 'amber') +
+        entryCard('错题本', '已错 ' + wrong + ' 题', '❌', '#/wrong', 'red') +
+        entryCard('我的收藏', '已收 ' + fav + ' 题', '⭐', '#/favorite', 'green') +
       '</div>' +
 
-      '<div class="home-foot">NISP 备考刷题 · 数据保存在本地浏览器</div>';
+      '<div class="home-foot">NISP 备考刷题 · 数据已同步云端</div>';
 
     main().innerHTML = html;
   }
 
-  function entryCard(title, desc, icon, href) {
+  function entryCard(title, desc, icon, href, tone) {
     return '<a class="entry-card" href="' + href + '">' +
-      '<div class="entry-icon">' + icon + '</div>' +
-      '<div class="entry-info">' +
-        '<div class="entry-title">' + escapeHtml(title) + '</div>' +
-        '<div class="entry-desc">' + escapeHtml(desc) + '</div>' +
-      '</div>' +
-      '<div class="entry-arrow">›</div>' +
+      '<div class="entry-icon tone-' + (tone || 'blue') + '">' + icon + '</div>' +
+      '<div class="entry-title">' + escapeHtml(title) + '</div>' +
+      '<div class="entry-desc">' + escapeHtml(desc) + '</div>' +
     '</a>';
   }
 
   // ============== 章节选择 ==============
   function renderChapter() {
     setTitle('章节练习');
-    activeNav('home');
+    activeNav('chapter');
     var html = '<div class="section-title">选择章节</div>' +
       '<div class="chapter-grid">' +
       CHAPTER_LIST.map(function (c) {
@@ -584,7 +607,7 @@
    * @param {number} duration 持续时间（毫秒）
    */
   function showToast(text, type, duration) {
-    duration = duration || 800;
+    duration = duration || 1400;
     var old = document.querySelector('.toast');
     if (old) old.remove();
     var toast = document.createElement('div');
@@ -1034,7 +1057,7 @@
   // ============== 收藏 ==============
   function renderFavorite() {
     setTitle('我的收藏');
-    activeNav('favorite');
+    activeNav('mine');
     var fav = Storage.getFavorite();
     if (!fav.length) {
       main().innerHTML = '<div class="empty-state">还没有收藏题目<br><br><a class="btn btn-primary" href="#/practice?mode=sequence">开始练习</a></div>';
@@ -1093,7 +1116,7 @@
   // ============== 学习统计 ==============
   function renderStats() {
     setTitle('学习统计');
-    activeNav('stats');
+    activeNav('mine');
     var s = Storage.getStats();
     var examHistory = Storage.getExamHistory();
     var wrong = Storage.getWrong();
@@ -1132,54 +1155,21 @@
           '</div>'
       ) +
 
-      '<div class="section-title">其他</div>' +
+      '<div class="section-title">学习数据</div>' +
       '<div class="list-wrap">' +
         '<div class="meta-item">错题本：' + Object.keys(wrong).length + ' 题</div>' +
         '<div class="meta-item">收藏：' + fav.length + ' 题</div>' +
-      '</div>' +
-
-      '<div class="section-title">账号</div>' +
-      '<div class="list-wrap">' +
-        (Auth.token()
-          ? '<div class="meta-item account-item">' +
-              '<div>当前用户：<strong>' + escapeHtml(Auth.username() || '未知') + '</strong></div>' +
-              '<div class="exam-info-meta">数据已同步到本机 MySQL</div>' +
-            '</div>' +
-            '<div style="padding:12px 16px"><button class="btn btn-ghost btn-block" data-action="logout">退出登录</button></div>'
-          : '<div class="meta-item">未登录（离线模式）· <a href="#/login">去登录 ›</a></div>') +
-      '</div>' +
-
-      '<div class="section-title">危险操作</div>' +
-      '<div class="list-wrap">' +
-        '<button class="btn btn-danger btn-block" data-action="clear-all">⚠️ 清空全部数据</button>' +
+        '<div class="meta-item">考试记录：' + examHistory.length + ' 次</div>' +
       '</div>' +
 
       '<div class="section-title">关于</div>' +
       '<div class="about">' +
         'NISP 刷题小程序 v1.0<br>' +
         '题库源自《题库1-522题.pdf》<br>' +
-        '纯前端实现，数据存于 localStorage<br>' +
-        '本地浏览器运行，无需联网' +
+        '进度 / 错题 / 收藏自动同步云端' +
       '</div>';
 
     main().innerHTML = html;
-
-    var clr = document.querySelector('[data-action="clear-all"]');
-    if (clr) clr.addEventListener('click', function () {
-      if (confirm('确定清空全部数据吗？此操作不可恢复！')) {
-        Storage.clearAll();
-        location.reload();
-      }
-    });
-
-    var logout = document.querySelector('[data-action="logout"]');
-    if (logout) logout.addEventListener('click', function () {
-      Auth.api('/logout', { method: 'POST', timeout: 3000 }).then(function () {
-        Auth.signOut();
-        showToast('已退出登录', 'info');
-        location.hash = '#/login';
-      });
-    });
   }
 
   function statCard(label, value) {
@@ -1192,7 +1182,7 @@
   // ============== 考试历史 ==============
   function renderHistory() {
     setTitle('考试记录');
-    activeNav('exam');
+    activeNav('mine');
     var examHistory = Storage.getExamHistory();
     if (!examHistory.length) {
       main().innerHTML = '<div class="empty-state">暂无考试记录<br><br><a class="btn btn-primary" href="#/exam">立即考试</a></div>';
@@ -1248,6 +1238,132 @@
       (wrongDetails.length ? '<div class="section-title">错题回顾</div>' + renderWrongDetails(wrongDetails) : '');
   }
 
+  // ============== 我的 ==============
+  function renderMine() {
+    setTitle('我的');
+    activeNav('mine');
+
+    var s = Storage.getStats();
+    var wrongCount = Object.keys(Storage.getWrong()).length;
+    var favCount = Storage.getFavorite().length;
+    var exams = Storage.getExamHistory();
+    var bankTotal = QUESTIONS.length;
+    var progIdx = Storage.getProgress('km1').idx || 0;
+    var pct = Math.min(100, Math.round((progIdx / bankTotal) * 100));
+
+    var total = s.totalAnswered || 0;
+    var acc = total ? Math.round(((s.totalCorrect || 0) / total) * 100) : 0;
+    var best = Math.max(s.examBest.km1 || 0, s.examBest.km4 || 0);
+
+    var logged = !!(global.Auth && Auth.token());
+    var online = !!(global.Auth && Auth.state.online);
+    var uname = logged ? (Auth.username() || '') : '';
+    var initial = uname ? uname.slice(0, 1).toUpperCase() : '我';
+
+    function row(opts) {
+      var tag = opts.href ? 'a' : 'div';
+      var attrs = opts.href ? ' href="' + opts.href + '"' : '';
+      if (opts.action) attrs += ' data-action="' + opts.action + '" role="button" tabindex="0"';
+      var cls = 'mine-row' + (opts.action || opts.href ? ' mine-row-tap' : '') + (opts.danger ? ' mine-row-danger' : '');
+      return '<' + tag + ' class="' + cls + '"' + attrs + '>' +
+        '<span class="mine-row-icon ' + (opts.tone ? 'tone-' + opts.tone : 'tone-gray') + '">' + opts.icon + '</span>' +
+        '<span class="mine-row-label">' + escapeHtml(opts.label) + '</span>' +
+        (opts.value ? '<span class="mine-row-value">' + escapeHtml(opts.value) + '</span>' : '') +
+        ((opts.href || opts.action) ? '<span class="mine-row-arrow">›</span>' : '') +
+      '</' + tag + '>';
+    }
+
+    var html = '' +
+      '<div class="mine-hero">' +
+        '<div class="mine-hero-top">' +
+          '<div class="mine-avatar">' + escapeHtml(initial) + '</div>' +
+          '<div class="mine-id">' +
+            '<div class="mine-name">' + escapeHtml(uname || '游客') + '</div>' +
+            '<div class="mine-badge ' + (online && logged ? 'ok' : 'off') + '">' +
+              (logged
+                ? (online ? '☁️ 已连接 · 数据自动同步' : '⚠️ 离线模式 · 数据仅存本地')
+                : '未登录 · 数据仅存本地') +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="mine-hero-stats">' +
+          '<div class="mine-hero-stat"><div class="mhs-value">' + total + '</div><div class="mhs-label">累计答题</div></div>' +
+          '<div class="mine-hero-stat"><div class="mhs-value">' + acc + '%</div><div class="mhs-label">正确率</div></div>' +
+          '<div class="mine-hero-stat"><div class="mhs-value">' + (s.streakDays || 0) + '</div><div class="mhs-label">连续天数</div></div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="mine-tiles">' +
+        '<a class="mine-tile" href="#/wrong"><div class="mine-tile-value">' + wrongCount + '</div><div class="mine-tile-label">错题本</div></a>' +
+        '<a class="mine-tile" href="#/favorite"><div class="mine-tile-value">' + favCount + '</div><div class="mine-tile-label">收藏</div></a>' +
+        '<a class="mine-tile" href="#/history"><div class="mine-tile-value">' + exams.length + '</div><div class="mine-tile-label">考试次数</div></a>' +
+        '<a class="mine-tile" href="#/stats"><div class="mine-tile-value">' + best + '</div><div class="mine-tile-label">最高分</div></a>' +
+      '</div>' +
+
+      '<div class="section-title">学习进度</div>' +
+      '<div class="mine-progress-card">' +
+        '<div class="mine-progress-head">' +
+          '<span>顺序练习</span>' +
+          '<span class="mine-progress-num">' + progIdx + ' / ' + bankTotal + ' 题</span>' +
+        '</div>' +
+        '<div class="mine-progress-track"><div class="mine-progress-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="mine-progress-foot">已完成 ' + pct + '% · 还剩 ' + Math.max(0, bankTotal - progIdx) + ' 题</div>' +
+      '</div>' +
+
+      '<div class="section-title">我的学习</div>' +
+      '<div class="mine-list">' +
+        row({ href: '#/wrong', icon: '❌', label: '我的错题', value: wrongCount + ' 题', tone: 'red' }) +
+        row({ href: '#/favorite', icon: '⭐', label: '我的收藏', value: favCount + ' 题', tone: 'amber' }) +
+        row({ href: '#/stats', icon: '📊', label: '学习统计', tone: 'blue' }) +
+        row({ href: '#/history', icon: '🗂️', label: '考试记录', value: exams.length + ' 次', tone: 'violet' }) +
+      '</div>' +
+
+      '<div class="section-title">账号与数据</div>' +
+      '<div class="mine-list">' +
+        row({ icon: '👤', label: '当前账号', value: uname || '未登录', tone: 'gray' }) +
+        (logged
+          ? row({ action: 'sync-now', icon: '☁️', label: '立即同步', value: online ? '云端' : '离线', tone: 'teal' })
+          : '') +
+        row({ action: 'clear-all', icon: '🗑️', label: '清空学习数据', tone: 'gray', danger: true }) +
+        row({ icon: 'ℹ️', label: '关于 NISP 刷题', value: 'v1.0', tone: 'gray' }) +
+      '</div>' +
+
+      (logged
+        ? '<button class="btn btn-ghost btn-block mine-logout" data-action="logout">退出登录</button>'
+        : '<a class="btn btn-primary btn-block mine-logout" href="#/login">登录 / 注册</a>') +
+
+      '<div class="mine-foot">NISP 备考刷题 · v1.0</div>';
+
+    main().innerHTML = html;
+
+    var syncBtn = document.querySelector('[data-action="sync-now"]');
+    if (syncBtn) syncBtn.addEventListener('click', function () {
+      if (!Sync.pushNow) return;
+      Sync.pushNow().then(function (ok) {
+        showToast(ok ? '已同步到云端' : '同步失败，请检查服务器', ok ? 'success' : 'error');
+      });
+    });
+
+    var clr = document.querySelector('[data-action="clear-all"]');
+    if (clr) clr.addEventListener('click', function () {
+      if (confirm('确定清空全部学习数据吗？此操作不可恢复！')) {
+        Storage.clearAll();
+        showToast('已清空', 'info');
+        renderMine();
+      }
+    });
+
+    var logout = document.querySelector('[data-action="logout"]');
+    if (logout) logout.addEventListener('click', function () {
+      if (!confirm('确定退出登录吗？本地学习数据会保留。')) return;
+      Auth.api('/logout', { method: 'POST', timeout: 3000 }).then(function () {
+        Auth.signOut();
+        showToast('已退出登录', 'info');
+        location.hash = '#/login';
+      });
+    });
+  }
+
   // ============== 路由注册 ==============
   /**
    * 底部导航栏显隐控制
@@ -1276,12 +1392,26 @@
   }
 
   /**
-   * 包装路由处理函数，进入时同步导航栏/返回按钮
+   * 同步顶栏右侧头像（显示用户首字，未登录显示「我」）
+   */
+  function syncTopbarAvatar() {
+    var el = $('topbar-avatar');
+    if (!el) return;
+    var name = (global.Auth && Auth.token()) ? (Auth.username() || '') : '';
+    el.textContent = name ? name.slice(0, 1).toUpperCase() : '我';
+    el.title = name ? name : '我的';
+  }
+
+  /**
+   * 包装路由处理函数，进入时同步导航栏/返回按钮/头像
    */
   function withNav(show, fn) {
     return function (p, q) {
+      var tb = $('topbar');
+      if (tb) tb.style.display = '';   // 从登录页返回时恢复顶栏
       setNavVisible(show);
       setBackButton(!show); // 隐藏底部导航时，顶部给返回按钮
+      syncTopbarAvatar();
       fn(p, q);
     };
   }
@@ -1294,101 +1424,182 @@
     Router.register('/stats',    withNav(true,  renderStats));
     Router.register('/history',  withNav(true,  renderHistory));
     Router.register('/result',   withNav(true,  renderResult));
+    Router.register('/mine',     withNav(true,  renderMine));
     // 以下页面自带底部操作栏
     Router.register('/practice',  withNav(false, renderPractice));
     Router.register('/card',      withNav(false, renderCard));
     Router.register('/exam',      withNav(false, renderExam));
     Router.register('/exam-card', withNav(false, renderExamCard));
-    // 登录页：自带全屏卡片布局，隐藏顶栏与底栏
-    Router.register('/login', renderLogin);
+    // 登录 / 注册：全屏页面，隐藏顶栏与底栏
+    Router.register('/login',    renderLogin);
+    Router.register('/register', renderRegister);
   }
 
-  // ============== 登录页 ==============
+  // ============== 登录 / 注册 ==============
+
+  var AUTH_ICONS = {
+    user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20.2a7.2 7.2 0 0 1 14.4 0"/></svg>',
+    lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.8" y="10.4" width="14.4" height="9.8" rx="2.4"/><path d="M8.4 10.4V7.8a3.6 3.6 0 0 1 7.2 0v2.6"/><path d="M12 14.4v2"/></svg>',
+    eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.4 12S5.8 6 12 6s9.6 6 9.6 6-3.4 6-9.6 6S2.4 12 2.4 12Z"/><circle cx="12" cy="12" r="2.6"/></svg>',
+    eyeOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.6 6.5A9.6 9.6 0 0 1 12 6c6.2 0 9.6 6 9.6 6a15 15 0 0 1-3 3.6"/><path d="M6.3 7.7A15.7 15.7 0 0 0 2.4 12S5.8 18 12 18a9.4 9.4 0 0 0 3.5-.6"/><path d="M10.3 10.3a2.4 2.4 0 0 0 3.4 3.4"/><path d="m3.6 3.6 16.8 16.8"/></svg>',
+  };
+
+  function authField(id, type, placeholder, icon, autocomplete, hasEye) {
+    return '<div class="auth-field">' +
+      '<span class="auth-field-icon">' + icon + '</span>' +
+      '<input id="' + id + '" type="' + type + '" placeholder="' + placeholder + '" ' +
+        'autocomplete="' + autocomplete + '" ' +
+        (id === 'auth-user' ? 'maxlength="20" ' : 'maxlength="64" ') +
+      '>' +
+      (hasEye
+        ? '<button type="button" class="auth-eye" data-eye="' + id + '" aria-label="显示密码">' + AUTH_ICONS.eye + '</button>'
+        : '') +
+    '</div>';
+  }
 
   /**
-   * 登录 / 注册页（后端开启且未登录时显示）
-   * 记住密码：token 存 localStorage，30 天内打开直接进首页
+   * 渲染登录 / 注册页（两种独立页面，共用同一套表单骨架）
+   * @param {'login'|'register'} mode
    */
-  function renderLogin() {
+  function renderAuth(mode) {
+    var isReg = mode === 'register';
     setNavVisible(false);
     setBackButton(false);
-    setTitle('登录');
-    document.getElementById('topbar').style.display = 'none';
+    setTitle(isReg ? '注册' : '登录');
+    $('topbar').style.display = 'none';
+
     var offline = !Auth.state.online;
+
     var html = '' +
-      '<div class="login-page">' +
-        '<div class="login-card">' +
-          '<div class="login-logo">📝</div>' +
-          '<div class="login-title">NISP 刷题</div>' +
-          '<div class="login-sub">登录后多端同步进度 · 错题 · 收藏</div>' +
-          '<div class="login-field">' +
-            '<input id="login-user" type="text" placeholder="用户名（2-20 位）" maxlength="20" autocomplete="username">' +
+      '<div class="auth-page">' +
+        '<div class="auth-glow auth-glow-1"></div>' +
+        '<div class="auth-glow auth-glow-2"></div>' +
+        '<div class="auth-inner">' +
+          '<div class="auth-brand">' +
+            '<div class="auth-logo">📝</div>' +
+            '<div class="auth-brand-name">NISP 刷题</div>' +
+            '<div class="auth-brand-sub">国家信息安全水平考试 · 备考助手</div>' +
           '</div>' +
-          '<div class="login-field">' +
-            '<input id="login-pass" type="password" placeholder="密码（至少 6 位）" autocomplete="current-password">' +
+
+          '<div class="auth-card">' +
+            '<div class="auth-card-head">' +
+              '<div class="auth-card-title">' + (isReg ? '创建账号' : '欢迎回来') + '</div>' +
+              '<div class="auth-card-sub">' +
+                (isReg ? '注册后进度、错题、收藏自动云端同步' : '登录后多端同步进度 · 错题 · 收藏') +
+              '</div>' +
+            '</div>' +
+
+            authField('auth-user', 'text', '用户名（2-20 位）', AUTH_ICONS.user, 'username', false) +
+            authField('auth-pass', 'password', '密码（至少 6 位）', AUTH_ICONS.lock,
+              isReg ? 'new-password' : 'current-password', true) +
+            (isReg
+              ? authField('auth-pass2', 'password', '再次输入密码', AUTH_ICONS.lock, 'new-password', true)
+              : '') +
+
+            (isReg
+              ? '<div class="auth-tip">用户名支持中文 / 字母 / 数字 / 下划线</div>'
+              : '') +
+
+            '<label class="auth-remember">' +
+              '<input type="checkbox" id="auth-remember" checked>' +
+              '<span>' + (isReg ? '注册后 30 天内免登录' : '记住密码，30 天内免登录') + '</span>' +
+            '</label>' +
+
+            '<div class="auth-msg" id="auth-msg"></div>' +
+
+            '<button type="button" class="btn btn-primary btn-block btn-bounce auth-submit" id="auth-submit">' +
+              (isReg ? '注 册' : '登 录') +
+            '</button>' +
+
+            '<div class="auth-switch">' +
+              (isReg
+                ? '已有账号？<a href="#/login">直接登录 ›</a>'
+                : '还没有账号？<a href="#/register">立即注册 ›</a>') +
+            '</div>' +
           '</div>' +
-          '<label class="login-remember">' +
-            '<input type="checkbox" id="login-remember" checked>' +
-            '<span>记住密码，30 天内免登录</span>' +
-          '</label>' +
-          '<div class="login-msg" id="login-msg"></div>' +
-          '<button class="btn btn-primary btn-block btn-bounce" id="login-btn">登 录</button>' +
-          '<button class="btn btn-ghost btn-block" id="register-btn" style="margin-top:10px">注册新账号</button>' +
+
           (offline
-            ? '<div class="login-foot login-foot-off">⚠️ 服务器未开启，当前为离线模式</div>' +
-              '<button class="btn btn-ghost btn-block" id="offline-btn" style="margin-top:10px">先离线刷题 ›</button>'
-            : '<div class="login-foot">密码加密存储 · 数据保存在本机 MySQL</div>') +
+            ? '<div class="auth-foot auth-foot-off">⚠️ 服务器未开启，当前为离线模式</div>' +
+              '<button class="btn btn-ghost btn-block" id="offline-btn" style="margin-top:12px">先离线刷题 ›</button>'
+            : '<div class="auth-foot">密码加盐哈希存储 · 数据保存在本机 MySQL</div>') +
         '</div>' +
       '</div>';
+
     main().innerHTML = html;
 
-    function doLogin(isRegister) {
-      var u = $('login-user').value.trim();
-      var p = $('login-pass').value;
-      var remember = $('login-remember').checked;
-      var msg = $('login-msg');
-      msg.textContent = '';
-      if (!u || !p) { msg.textContent = '请输入用户名和密码'; return; }
-      var btn = $(isRegister ? 'register-btn' : 'login-btn');
+    // ---- 密码可见切换 ----
+    document.querySelectorAll('.auth-eye').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var input = $(btn.dataset.eye);
+        if (!input) return;
+        var toText = input.type === 'password';
+        input.type = toText ? 'text' : 'password';
+        btn.innerHTML = toText ? AUTH_ICONS.eyeOff : AUTH_ICONS.eye;
+        btn.classList.toggle('on', toText);
+      });
+    });
+
+    function fail(msg) {
+      $('auth-msg').textContent = msg || '';
+    }
+
+    function submit() {
+      var u = $('auth-user').value.trim();
+      var p = $('auth-pass').value;
+      var remember = $('auth-remember').checked;
+      var btn = $('auth-submit');
+      fail('');
+
+      if (!u || !p) return fail(isReg ? '请填写用户名和密码' : '请输入用户名和密码');
+
+      if (isReg) {
+        if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]{2,20}$/.test(u)) return fail('用户名需 2-20 位（中文 / 字母 / 数字 / 下划线）');
+        if (p.length < 6) return fail('密码至少 6 位');
+        if ($('auth-pass2').value !== p) return fail('两次输入的密码不一致');
+      }
+
       btn.disabled = true;
-      btn.textContent = isRegister ? '注册中…' : '登录中…';
-      Auth.api(isRegister ? '/register' : '/login', {
+      btn.textContent = isReg ? '注册中…' : '登录中…';
+
+      Auth.api(isReg ? '/register' : '/login', {
         method: 'POST',
         body: { username: u, password: p },
         timeout: 6000,
       }).then(function (r) {
         btn.disabled = false;
-        btn.textContent = isRegister ? '注册新账号' : '登 录';
-        if (r.ok) {
-          Auth.signIn(r.token, r.username, remember);
-          document.getElementById('topbar').style.display = '';
-          showToast((isRegister ? '注册成功，欢迎 ' : '欢迎回来，') + r.username, 'success');
-          Sync.pull().then(function () {
-            location.hash = '#/home';
-            renderHome();
-          });
-        } else {
-          msg.textContent = (r.offline ? '无法连接服务器，请确认已启动' : (r.msg || '操作失败'));
+        btn.textContent = isReg ? '注 册' : '登 录';
+        if (!r.ok) {
+          return fail(r.offline ? '无法连接服务器，请确认已启动' : (r.msg || '操作失败'));
         }
+        Auth.signIn(r.token, r.username, remember);
+        $('topbar').style.display = '';
+        syncTopbarAvatar();
+        showToast((isReg ? '注册成功，欢迎 ' : '欢迎回来，') + r.username, 'success');
+        Sync.pull().then(function () {
+          location.hash = '#/home';
+        });
       });
     }
 
-    $('login-btn').addEventListener('click', function () { doLogin(false); });
-    $('register-btn').addEventListener('click', function () { doLogin(true); });
-    var ob = $('offline-btn');
-    if (ob) ob.addEventListener('click', function () {
-      document.getElementById('topbar').style.display = '';
-      location.hash = '#/home';
-    });
-    // 回车提交登录
-    ['login-user', 'login-pass'].forEach(function (id) {
+    $('auth-submit').addEventListener('click', submit);
+    ['auth-user', 'auth-pass', 'auth-pass2'].forEach(function (id) {
       var el = $(id);
       if (el) el.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') doLogin(false);
+        if (e.key === 'Enter') submit();
       });
     });
-    setTimeout(function () { var el = $('login-user'); if (el) el.focus(); }, 50);
+
+    var ob = $('offline-btn');
+    if (ob) ob.addEventListener('click', function () {
+      $('topbar').style.display = '';
+      location.hash = '#/home';
+    });
+
+    setTimeout(function () { var el = $('auth-user'); if (el) el.focus(); }, 60);
   }
+
+  function renderLogin() { renderAuth('login'); }
+  function renderRegister() { renderAuth('register'); }
 
   /**
    * 启动流程：
@@ -1398,6 +1609,8 @@
   function boot() {
     Router.start('#/home');
     Auth.probe().then(function (online) {
+      var hash = location.hash || '';
+      var onAuthPage = /^#\/(login|register)/.test(hash);
       if (!online) {
         showToast('服务器未开启，本地离线模式', 'info');
         return;
@@ -1405,10 +1618,13 @@
       if (Auth.token()) {
         // 已登录：静默拉取云端数据，首页数据若被覆盖则刷新
         Sync.pull().then(function (src) {
-          if (src === 'server' && (location.hash === '#/home' || location.hash === '' || location.hash === '#')) {
+          if (src === 'server' && (hash === '#/home' || hash === '' || hash === '#')) {
             renderHome();
           }
         });
+      } else if (onAuthPage) {
+        // 已经停留在登录 / 注册页：只刷新在线状态（避免把用户从注册页踢走）
+        renderAuth(hash.indexOf('register') !== -1 ? 'register' : 'login');
       } else {
         location.hash = '#/login';
       }

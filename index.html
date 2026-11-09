@@ -19,8 +19,8 @@
       <div class="topbar-inner">
         <div class="topbar-actions left" id="topbar-back"></div>
         <div id="page-title" class="topbar-title">NISP 刷题</div>
-        <div class="topbar-actions right">
-          <a href="#/stats" class="topbar-btn" aria-label="学习统计">📊</a>
+        <div class="topbar-actions right" id="topbar-right">
+          <a href="#/mine" class="topbar-avatar" id="topbar-avatar" aria-label="我的">我</a>
         </div>
       </div>
     </header>
@@ -30,20 +30,52 @@
 
     <!-- 底部导航栏（练习/考试等页面会被隐藏，改由操作栏接管） -->
     <nav id="bottombar" class="nav-bar">
-      <a href="#/home"     class="nav-item" data-nav="home">
-        <div class="nav-icon">🏠</div><div class="nav-label">首页</div>
+      <a href="#/home" class="nav-item" data-nav="home">
+        <span class="nav-icon-wrap">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3.2 10.7 12 3.5l8.8 7.2"/>
+            <path d="M5.6 9.6V20.5h12.8V9.6"/>
+            <path d="M9.8 20.5v-5.6h4.4v5.6"/>
+          </svg>
+        </span>
+        <span class="nav-label">首页</span>
       </a>
-      <a href="#/chapter"  class="nav-item" data-nav="chapter">
-        <div class="nav-icon">📚</div><div class="nav-label">练习</div>
+      <a href="#/chapter" class="nav-item" data-nav="chapter">
+        <span class="nav-icon-wrap">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 6.3C10.4 4.9 8.3 4.2 4.6 4.2v14.2c3.7 0 5.8.7 7.4 2.1 1.6-1.4 3.7-2.1 7.4-2.1V4.2c-3.7 0-5.8.7-7.4 2.1Z"/>
+            <path d="M12 6.3v14.2"/>
+          </svg>
+        </span>
+        <span class="nav-label">练习</span>
       </a>
-      <a href="#/exam"     class="nav-item" data-nav="exam">
-        <div class="nav-icon">📝</div><div class="nav-label">考试</div>
+      <a href="#/exam" class="nav-item" data-nav="exam">
+        <span class="nav-icon-wrap">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="5" y="4.2" width="14" height="16.6" rx="2.6"/>
+            <path d="M9.2 4.2v-1h5.6v1"/>
+            <path d="m9.2 12.4 2 2 3.6-3.8"/>
+          </svg>
+        </span>
+        <span class="nav-label">考试</span>
       </a>
-      <a href="#/wrong"    class="nav-item" data-nav="wrong">
-        <div class="nav-icon">❌</div><div class="nav-label">错题</div>
+      <a href="#/wrong" class="nav-item" data-nav="wrong">
+        <span class="nav-icon-wrap">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.8"/>
+            <path d="m9.3 9.3 5.4 5.4M14.7 9.3l-5.4 5.4"/>
+          </svg>
+        </span>
+        <span class="nav-label">错题</span>
       </a>
-      <a href="#/favorite" class="nav-item" data-nav="favorite">
-        <div class="nav-icon">⭐</div><div class="nav-label">收藏</div>
+      <a href="#/mine" class="nav-item" data-nav="mine">
+        <span class="nav-icon-wrap">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="8.2" r="3.7"/>
+            <path d="M4.6 20.4a7.4 7.4 0 0 1 14.8 0"/>
+          </svg>
+        </span>
+        <span class="nav-label">我的</span>
       </a>
     </nav>
   </div>

@@ -148,6 +148,14 @@
     }, 1200);
   }
 
+  /** 立即推送（跳过防抖），返回 Promise<boolean>，供「我的 → 立即同步」使用 */
+  function pushNow() {
+    if (!state.online || !token()) return Promise.resolve(false);
+    if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
+    return api('/state', { method: 'POST', body: { data: exportLocal() }, timeout: 8000 })
+      .then(function (r) { return !!(r && r.ok); });
+  }
+
   // 挂接 Storage 变更钩子（storage.js 加载后设置）
   if (global.Storage) {
     global.Storage.onChange = function () { push(); };
@@ -166,6 +174,7 @@
   global.Sync = {
     pull: pull,
     push: push,
+    pushNow: pushNow,
   };
 
 })(window);

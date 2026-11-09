@@ -583,7 +583,8 @@
    * @param {'success'|'error'|''} type 样式类型
    * @param {number} duration 持续时间（毫秒）
    */
-  function showToast(text, type, duration) {    duration = duration || 800;
+  function showToast(text, type, duration) {
+    duration = duration || 800;
     var old = document.querySelector('.toast');
     if (old) old.remove();
     var toast = document.createElement('div');

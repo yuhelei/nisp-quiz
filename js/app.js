@@ -282,7 +282,7 @@
     var idx = Practice.idx + 1;
     var progressPct = Math.round((idx / total) * 100);
     var ua = Practice.userAnswers[q.id] || [];
-    // locked：仅在答错时为 true。答对会立即跳走，不会渲染 locked 状态
+    // locked：已作答（答对自动跳走后，用户滑回/跳回会渲染此状态，需区分对错展示）
     var locked = ua.length > 0;
     var correctNow = locked ? isCorrect(q, ua) : false;
 
@@ -323,27 +323,26 @@
       '</div>' +
 
       (locked ? (
-        '<div class="analysis err">' +
-          '<div class="analysis-status">✗ 回答错误 · 正确答案：' + escapeHtml(q.answer.join('、')) + '</div>' +
+        '<div class="analysis ' + (correctNow ? 'ok' : 'err') + '">' +
+          '<div class="analysis-status">' + (correctNow ? '✓ 回答正确' : '✗ 回答错误') + ' · 正确答案：' + escapeHtml(q.answer.join('、')) + '</div>' +
           (q.analysis ? '<div class="analysis-text"><strong>解析：</strong>' + escapeHtml(q.analysis) + '</div>' : '') +
         '</div>'
       ) : '');
 
-    var bottomBar = '';
-    if (locked) {
-      // 答错：停留展示解析，提供答题卡 + 下一题
-      bottomBar = '<div class="bottom-bar"><div class="btn-row">' +
-        '<button class="btn btn-ghost" data-action="card">答题卡</button>' +
-        '<button class="btn btn-primary" data-action="next">' + (Practice.idx >= total - 1 ? '完成练习 ›' : '下一题 ›') + '</button>' +
-      '</div></div>';
-    } else if (q.type === 'multiple') {
-      // 多选未确认：显示确认按钮
-      bottomBar = '<div class="bottom-bar"><button class="btn btn-primary btn-block" data-action="confirm">确认答案</button></div>';
-    } else {
-      // 单选/判断未作答：底部留空（题目本身就是交互）
-      bottomBar = '';
-    }
-    html += bottomBar;
+    // 底部操作栏：上一题 / 题目列表 / 下一题（多选未确认时为确认答案）
+    var isFirst = Practice.idx === 0;
+    var isLastQ = Practice.idx >= total - 1;
+    var midBtn = (!locked && q.type === 'multiple')
+      ? '<button class="btn btn-primary" data-action="confirm">确认答案</button>'
+      : '<button class="btn btn-primary" data-action="next">' + (isLastQ ? '完成练习 ›' : '下一题 ›') + '</button>';
+    html += '<div class="bottom-bar"><div class="btn-row">' +
+      '<button class="btn btn-ghost" data-action="prev"' + (isFirst ? ' disabled' : '') + '>‹ 上一题</button>' +
+      '<button class="btn btn-ghost" data-action="qlist">题目列表</button>' +
+      midBtn +
+    '</div></div>';
+
+    // 题目列表面板（默认隐藏，点按钮弹出）
+    html += qlistPanelHtml();
 
     main().innerHTML = html;
 
@@ -439,12 +438,30 @@
         }
       });
     }
-    var card = document.querySelector('[data-action="card"]');
-    if (card) {
-      card.addEventListener('click', function () {
-        location.hash = '#/card';
-      });
+    var prevBtn = document.querySelector('[data-action="prev"]');
+    if (prevBtn) {
+      prevBtn.addEventListener('click', goPrev);
     }
+    var qlistBtn = document.querySelector('[data-action="qlist"]');
+    if (qlistBtn) {
+      qlistBtn.addEventListener('click', openQlist);
+    }
+    var qlistClose = document.querySelector('[data-action="qlist-close"]');
+    if (qlistClose) {
+      qlistClose.addEventListener('click', closeQlist);
+    }
+    var qlistMask = $('qlist-mask');
+    if (qlistMask) {
+      qlistMask.addEventListener('click', closeQlist);
+    }
+    document.querySelectorAll('[data-jump]').forEach(function (cell) {
+      cell.addEventListener('click', function () {
+        Practice.idx = parseInt(cell.getAttribute('data-jump'), 10);
+        savePracticeProgress();
+        closeQlist();
+        renderQuestion();
+      });
+    });
     var favBtn = document.querySelector('[data-fav]');
     if (favBtn) {
       favBtn.addEventListener('click', function (e) {
@@ -456,14 +473,117 @@
     }
   }
 
+  // ============== 练习导航（上一题/下一题/滑动/题目列表） ==============
+  function savePracticeProgress() {
+    if (Practice && Practice.mode === 'sequence') {
+      Storage.setProgress('km1', { idx: Practice.idx, lastTs: Date.now() });
+    }
+  }
+
+  function goPrev() {
+    if (!Practice || Practice.finished || Practice.idx <= 0) return;
+    Practice.idx--;
+    savePracticeProgress();
+    renderQuestion();
+  }
+
+  function goNext() {
+    if (!Practice || Practice.finished) return;
+    // 滑动在最后一题不触发交卷，避免误操作；交卷走「完成练习」按钮
+    if (Practice.idx >= Practice.list.length - 1) return;
+    Practice.idx++;
+    savePracticeProgress();
+    renderQuestion();
+  }
+
+  /** 题目列表面板 HTML（复用答题卡的 card-cell 样式） */
+  function qlistPanelHtml() {
+    if (!Practice) return '';
+    var cells = Practice.list.map(function (q, i) {
+      var ua = Practice.userAnswers[q.id];
+      var cls = ['card-cell'];
+      if (i === Practice.idx) cls.push('current');
+      if (ua && ua.length) cls.push(isCorrect(q, ua) ? 'ok' : 'err');
+      return '<div class="' + cls.join(' ') + '" data-jump="' + i + '">' + (i + 1) + '</div>';
+    }).join('');
+    var legend = '<div class="legend">' +
+      '<span><i class="dot current"></i> 当前</span>' +
+      '<span><i class="dot ok"></i> 答对</span>' +
+      '<span><i class="dot err"></i> 答错</span>' +
+      '<span><i class="dot empty"></i> 未答</span>' +
+    '</div>';
+    return '' +
+      '<div class="qlist-mask" id="qlist-mask"></div>' +
+      '<div class="qlist-panel" id="qlist-panel">' +
+        '<div class="qlist-head">' +
+          '<div class="qlist-title">题目列表（共 ' + Practice.list.length + ' 题）</div>' +
+          '<button class="qlist-close" data-action="qlist-close" aria-label="关闭">×</button>' +
+        '</div>' +
+        legend +
+        '<div class="card-grid qlist-grid">' + cells + '</div>' +
+      '</div>';
+  }
+
+  function openQlist() {
+    var p = $('qlist-panel'), m = $('qlist-mask');
+    if (p) p.classList.add('open');
+    if (m) m.classList.add('open');
+    var cur = document.querySelector('.qlist-grid .card-cell.current');
+    if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'center' });
+  }
+
+  function closeQlist() {
+    var p = $('qlist-panel'), m = $('qlist-mask');
+    if (p) p.classList.remove('open');
+    if (m) m.classList.remove('open');
+  }
+
+  /** 触摸滑动切换题目：右滑上一题，左滑下一题（仅练习页生效） */
+  function bindSwipeNav() {
+    var el = main();
+    if (!el) return;
+    var startX = 0, startY = 0, tracking = false;
+    el.addEventListener('touchstart', function (e) {
+      if (location.hash.indexOf('#/practice') !== 0) return;
+      if (!Practice || Practice.finished) return;
+      var panel = $('qlist-panel');
+      if (panel && panel.classList.contains('open')) return;
+      tracking = true;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+    el.addEventListener('touchend', function (e) {
+      if (!tracking) return;
+      tracking = false;
+      if (location.hash.indexOf('#/practice') !== 0) return;
+      if (!Practice || Practice.finished) return;
+      var dx = e.changedTouches[0].clientX - startX;
+      var dy = e.changedTouches[0].clientY - startY;
+      // 水平位移 ≥60px 且明显大于纵向位移才算滑动，避免误伤上下滚动和点击
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      if (dx > 0) goPrev(); else goNext();
+    }, { passive: true });
+  }
+
+  /** PC 端方向键：← 上一题，→ 下一题 */
+  function bindKeyboardNav() {
+    document.addEventListener('keydown', function (e) {
+      if (location.hash.indexOf('#/practice') !== 0) return;
+      if (!Practice || Practice.finished) return;
+      var panel = $('qlist-panel');
+      if (panel && panel.classList.contains('open')) return;
+      if (e.key === 'ArrowLeft') { goPrev(); }
+      else if (e.key === 'ArrowRight') { goNext(); }
+    });
+  }
+
   /**
    * 顶部中央 toast 提示
    * @param {string} text 提示文字
    * @param {'success'|'error'|''} type 样式类型
    * @param {number} duration 持续时间（毫秒）
    */
-  function showToast(text, type, duration) {
-    duration = duration || 800;
+  function showToast(text, type, duration) {    duration = duration || 800;
     var old = document.querySelector('.toast');
     if (old) old.remove();
     var toast = document.createElement('div');
@@ -1166,6 +1286,8 @@
     CHAPTER_LIST: CHAPTER_LIST,
     init: function () {
       registerRoutes();
+      bindSwipeNav();
+      bindKeyboardNav();
       Router.start('#/home');
     },
   };

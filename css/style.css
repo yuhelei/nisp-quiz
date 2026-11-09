@@ -407,6 +407,57 @@ button { font-family: inherit; cursor: pointer; }
 .bottom-bar .btn-row { flex-wrap: nowrap; }
 .bottom-bar .btn { flex: 1; min-width: 0; padding: 10px 8px; }
 
+/* ============== 题目列表面板（练习页底部弹出） ============== */
+.qlist-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 90;
+}
+.qlist-mask.open { opacity: 1; pointer-events: auto; }
+.qlist-panel {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 100%);
+  width: 100%;
+  max-width: 960px;
+  background: var(--card);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 16px 16px calc(16px + var(--safe-bottom));
+  max-height: 70vh;
+  overflow-y: auto;
+  transition: transform 0.25s ease;
+  z-index: 91;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+}
+.qlist-panel.open { transform: translate(-50%, 0); }
+.qlist-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.qlist-title { font-size: 16px; font-weight: 600; color: var(--text); }
+.qlist-close {
+  border: none;
+  background: var(--border-light);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.qlist-panel .legend { box-shadow: none; padding: 0 0 10px; margin-bottom: 10px; background: transparent; }
+.qlist-grid { max-height: 48vh; overflow-y: auto; }
+
 /* ============== 答题卡 ============== */
 .legend {
   display: flex;

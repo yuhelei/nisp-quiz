@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
+const compression = require('compression');
 const mysql = require('mysql2/promise');
 
 // ============== 配置 ==============
@@ -92,6 +93,8 @@ async function requireAuth(req) {
 
 // ============== 应用 ==============
 const app = express();
+// gzip 压缩：题库 527KB → 约 132KB，窄带隧道下提速 4 倍
+app.use(compression({ threshold: 1024 }));
 app.use(express.json({ limit: '2mb' }));
 
 // 简易 CORS（本机/局域网自用）
@@ -214,9 +217,10 @@ app.post('/api/state', wrap(async function (req, res) {
 }));
 
 // ---------- 静态托管前端（仅公开资源） ----------
-app.use('/css', express.static(path.join(ROOT, 'css')));
-app.use('/js', express.static(path.join(ROOT, 'js')));
-app.use('/data', express.static(path.join(ROOT, 'data')));
+// 加浏览器缓存：题库 527KB 只在首次下载，之后走本地缓存（窄带环境关键优化）
+app.use('/css', express.static(path.join(ROOT, 'css'), { maxAge: '30m' }));
+app.use('/js', express.static(path.join(ROOT, 'js'), { maxAge: '30m' }));
+app.use('/data', express.static(path.join(ROOT, 'data'), { maxAge: '1d' }));
 app.get('/', function (req, res) {
   res.sendFile(path.join(ROOT, 'index.html'));
 });

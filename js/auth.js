@@ -80,13 +80,13 @@
     });
   }
 
-  /** 探测后端可达性（3 秒超时）；file:// 协议下直接判定离线，避免无谓请求 */
+  /** 探测后端可达性（12 秒超时）；公网隧道下响应可达 2~5 秒，超时过短会误判离线 */
   function probe() {
     if (location.protocol === 'file:') {
       state.online = false;
       return Promise.resolve(false);
     }
-    return api('/ping', { timeout: 3000 }).then(function (r) {
+    return api('/ping', { timeout: 12000 }).then(function (r) {
       state.online = !!(r && r.ok);
       return state.online;
     });
@@ -131,7 +131,7 @@
    */
   function pull() {
     if (!state.online || !token()) return Promise.resolve(false);
-    return api('/state', { timeout: 6000 }).then(function (r) {
+    return api('/state', { timeout: 20000 }).then(function (r) {
       if (!r.ok) return false;
       if (r.data) { importLocal(r.data); return 'server'; }
       push();
@@ -144,7 +144,7 @@
     if (!state.online || !token()) return;
     if (pushTimer) clearTimeout(pushTimer);
     pushTimer = setTimeout(function () {
-      api('/state', { method: 'POST', body: { data: exportLocal() }, timeout: 8000 });
+      api('/state', { method: 'POST', body: { data: exportLocal() }, timeout: 20000 });
     }, 1200);
   }
 
@@ -152,7 +152,7 @@
   function pushNow() {
     if (!state.online || !token()) return Promise.resolve(false);
     if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
-    return api('/state', { method: 'POST', body: { data: exportLocal() }, timeout: 8000 })
+    return api('/state', { method: 'POST', body: { data: exportLocal() }, timeout: 20000 })
       .then(function (r) { return !!(r && r.ok); });
   }
 

@@ -1262,3 +1262,38 @@ button { font-family: inherit; cursor: pointer; }
   transition-duration: 0.08s;
   transition-timing-function: ease-out;
 }
+
+/* ============== 首屏题库加载骨架 ============== */
+/* 题库较大（约 150KB gzip），慢网络下先给用户可见反馈，避免白屏被误判为打不开 */
+.boot-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 55vh;
+  padding: 40px 24px;
+  text-align: center;
+}
+.boot-spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid rgba(45, 108, 223, 0.18);
+  border-top-color: #2D6CDF;
+  border-radius: 50%;
+  animation: boot-spin 0.8s linear infinite;
+  margin-bottom: 18px;
+}
+@keyframes boot-spin { to { transform: rotate(360deg); } }
+.boot-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text, #1A1D24);
+  margin: 0 0 8px;
+}
+.boot-tip {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-2, #6B7280);
+  margin: 0;
+  max-width: 260px;
+}

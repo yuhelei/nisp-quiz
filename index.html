@@ -9,7 +9,7 @@
   <title>NISP 刷题</title>
   <!-- 内联 favicon，避免 file:// 或静态服务下的 404 -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📝</text></svg>">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=20261117b">
 </head>
 <body>
   <!-- .app 容器：承载 PC 端 960px 居中 + 底部安全区留白 -->
@@ -26,7 +26,14 @@
     </header>
 
     <!-- 主内容区：视图由 app.js 渲染 -->
-    <main id="main" class="main"></main>
+    <main id="main" class="main">
+      <!-- 首屏骨架：题库下载完成前先显示，避免长时间白屏 -->
+      <div class="boot-loading" id="boot-loading">
+        <div class="boot-spinner"></div>
+        <p class="boot-title">正在加载题库</p>
+        <p class="boot-tip" id="boot-tip">首次打开需要下载题库，请稍候…</p>
+      </div>
+    </main>
 
     <!-- 底部导航栏（练习/考试等页面会被隐藏，改由操作栏接管） -->
     <nav id="bottombar" class="nav-bar">
@@ -80,34 +87,47 @@
     </nav>
   </div>
 
-  <!-- 题库数据 -->
-  <script src="data/questions.js"></script>
   <!-- 存储层 -->
-  <script src="js/storage.js"></script>
+  <script src="js/storage.js?v=20261117b"></script>
   <!-- 认证与云端同步 -->
-  <script src="js/auth.js"></script>
+  <script src="js/auth.js?v=20261117b"></script>
   <!-- 路由层 -->
-  <script src="js/router.js"></script>
+  <script src="js/router.js?v=20261117b"></script>
   <!-- 业务层 -->
-  <script src="js/app.js"></script>
-  <!-- 启动应用 -->
+  <script src="js/app.js?v=20261117b"></script>
+  <!-- 题库异步加载 + 启动应用：先出界面骨架，再拉题库，避免白屏等待 -->
   <script>
     (function () {
       'use strict';
       var mainEl = document.getElementById('main');
-      if (!window.QUESTIONS_RAW || !window.QUESTIONS_RAW.length) {
+      var loadingEl = document.getElementById('boot-loading');
+      var tipEl = document.getElementById('boot-tip');
+
+      var slowTimer = setTimeout(function () {
+        if (tipEl) tipEl.textContent = '网络较慢，题库约 150KB，请继续等待，不要关闭页面…';
+      }, 6000);
+
+      function fail(msg) {
+        clearTimeout(slowTimer);
         mainEl.innerHTML =
-          '<div class="empty-state"><h2>题库加载失败</h2>' +
-          '<p>请检查 <code>data/questions.js</code> 是否存在且格式正确。</p></div>';
-        return;
+          '<div class="empty-state"><h2>' + msg + '</h2>' +
+          '<p>请检查网络后刷新页面重试。</p></div>';
       }
-      if (!window.Storage || !window.Router || !window.App) {
-        mainEl.innerHTML =
-          '<div class="empty-state"><h2>脚本加载失败</h2>' +
-          '<p>请检查 <code>js/</code> 目录下的脚本是否能正确加载。</p></div>';
-        return;
+
+      function start() {
+        clearTimeout(slowTimer);
+        if (!window.QUESTIONS_RAW || !window.QUESTIONS_RAW.length) { fail('题库加载失败'); return; }
+        if (!window.Storage || !window.Router || !window.App) { fail('脚本加载失败'); return; }
+        if (loadingEl && loadingEl.parentNode) loadingEl.parentNode.removeChild(loadingEl);
+        window.App.init();
       }
-      window.App.init();
+
+      var s = document.createElement('script');
+      s.src = 'data/questions.js?v=20261117b';
+      s.async = true;
+      s.onload = start;
+      s.onerror = function () { fail('题库加载失败'); };
+      document.body.appendChild(s);
     })();
   </script>
 </body>

@@ -15,11 +15,18 @@
   'use strict';
 
   // ============== 题库加载 ==============
-  var RAW = global.QUESTIONS_RAW || [];
-  var QUESTIONS = RAW.slice(); // 顺序练习用原序
-  // 按章节分布
+  // 题库改为异步注入（先出界面骨架再拉数据），因此不能在脚本执行时读取，
+  // 必须等 App.init() 调用 loadBank() 时才建立索引，否则会读到空数组。
+  var RAW = [];
+  var QUESTIONS = []; // 顺序练习用原序
   var CHAPTER_LIST = []; // [{name, count, ids}]
-  (function () {
+  var bankReady = false;
+
+  function loadBank() {
+    if (bankReady) return;
+    RAW = global.QUESTIONS_RAW || [];
+    QUESTIONS = RAW.slice();
+    CHAPTER_LIST = [];
     var seen = {};
     RAW.forEach(function (q) {
       if (!seen[q.chapter]) {
@@ -29,7 +36,8 @@
       seen[q.chapter].count++;
       seen[q.chapter].ids.push(q.id);
     });
-  })();
+    bankReady = true;
+  }
 
   function getQuestions() { return QUESTIONS; }
 
@@ -1633,9 +1641,11 @@
 
   // ============== 启动 ==============
   global.App = {
-    QUESTIONS: QUESTIONS,
-    CHAPTER_LIST: CHAPTER_LIST,
+    // 用 getter 暴露，保证题库异步加载完成后取到的是最新数组
+    get QUESTIONS() { return QUESTIONS; },
+    get CHAPTER_LIST() { return CHAPTER_LIST; },
     init: function () {
+      loadBank();
       registerRoutes();
       bindSwipeNav();
       bindKeyboardNav();

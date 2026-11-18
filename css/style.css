@@ -1297,3 +1297,47 @@ button { font-family: inherit; cursor: pointer; }
   margin: 0;
   max-width: 260px;
 }
+
+/* ============== 题目配图 ============== */
+.q-figure {
+  margin: 12px 0 2px;
+  padding: 0;
+}
+.q-figure-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line, #E5E7EB);
+  border-radius: 10px;
+  background: #FFFFFF;
+  cursor: zoom-in;
+  -webkit-tap-highlight-color: transparent;
+}
+.q-figure figcaption {
+  font-size: 12px;
+  color: var(--text-3, #9CA3AF);
+  text-align: center;
+  margin-top: 6px;
+}
+
+/* 全屏查看：按原始尺寸展示，可横向滑动看细节 */
+.img-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(10, 12, 18, 0.94);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 14px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.img-viewer img {
+  display: block;
+  max-width: none;
+  height: auto;
+  background: #FFFFFF;
+  border-radius: 6px;
+  margin: auto;
+}

@@ -91,6 +91,37 @@
     var el = $('page-title');
     if (el) el.textContent = t || 'NISP 刷题';
   }
+
+  // ============== 题目配图 ==============
+  // 题库里部分题目依赖示意图（PDF 中提取），无图题目不渲染任何节点
+  function figureHtml(q) {
+    if (!q || !q.image) return '';
+    return '<figure class="q-figure">' +
+      '<img class="q-figure-img" src="' + escapeHtml(q.image) + '" alt="题目配图" loading="lazy" decoding="async">' +
+      '<figcaption>点击图片可放大查看细节</figcaption>' +
+    '</figure>';
+  }
+
+  // 点击配图 → 全屏查看（按原始尺寸显示，可滑动查看细节）
+  function bindFigureZoom() {
+    document.querySelectorAll('.q-figure-img').forEach(function (img) {
+      img.addEventListener('click', function () {
+        var existing = document.querySelector('.img-viewer');
+        if (existing) existing.parentNode.removeChild(existing);
+        var box = document.createElement('div');
+        box.className = 'img-viewer';
+        var big = document.createElement('img');
+        big.src = img.getAttribute('src');
+        big.alt = '题目配图';
+        box.appendChild(big);
+        box.addEventListener('click', function () {
+          if (box.parentNode) box.parentNode.removeChild(box);
+        });
+        document.body.appendChild(box);
+      });
+    });
+  }
+
   function activeNav(name) {
     document.querySelectorAll('.nav-item').forEach(function (el) {
       el.classList.toggle('active', el.dataset.nav === name);
@@ -334,6 +365,7 @@
 
       '<div class="question-card">' +
         '<div class="stem">' + escapeHtml(q.stem) + '</div>' +
+        figureHtml(q) +
         '<div class="options">' +
         q.options.map(function (opt) {
           var classes = ['option'];
@@ -376,6 +408,7 @@
     html += qlistPanelHtml();
 
     main().innerHTML = html;
+    bindFigureZoom();
 
     // 绑定选项事件
     document.querySelectorAll('.option').forEach(function (el) {
@@ -778,6 +811,7 @@
 
       '<div class="question-card">' +
         '<div class="stem">' + escapeHtml(q.stem) + '</div>' +
+        figureHtml(q) +
         '<div class="options">' +
         q.options.map(function (opt) {
           var picked = ua.indexOf(opt.label) !== -1;
@@ -796,6 +830,7 @@
       '</div></div>';
 
     main().innerHTML = html;
+    bindFigureZoom();
 
     document.querySelectorAll('.option').forEach(function (el) {
       el.addEventListener('click', function () {
@@ -907,6 +942,7 @@
       '</div>' +
       (wrongDetails.length ? '<div class="section-title">错题回顾</div>' + renderWrongDetails(wrongDetails) : '');
     main().innerHTML = html;
+    bindFigureZoom();
   }
 
   function renderWrongDetails(details) {
@@ -925,6 +961,7 @@
       }).join('');
       return '<div class="question-card wrong-detail">' +
         '<div class="stem">' + escapeHtml(d.stem) + '</div>' +
+        figureHtml(byId(d.qid)) +
         '<div class="options">' + optsHtml + '</div>' +
         '<div class="analysis err">' +
           '<div class="analysis-text"><strong>你的答案：</strong>' + (d.userAnswer.length ? escapeHtml(d.userAnswer.join('、')) : '未作答') + '</div>' +

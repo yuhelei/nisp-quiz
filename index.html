@@ -9,7 +9,7 @@
   <title>NISP 刷题</title>
   <!-- 内联 favicon，避免 file:// 或静态服务下的 404 -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📝</text></svg>">
-  <link rel="stylesheet" href="css/style.css?v=20261117b">
+  <link rel="stylesheet" href="css/style.css?v=20261118">
 </head>
 <body>
   <!-- .app 容器：承载 PC 端 960px 居中 + 底部安全区留白 -->
@@ -88,13 +88,13 @@
   </div>
 
   <!-- 存储层 -->
-  <script src="js/storage.js?v=20261117b"></script>
+  <script src="js/storage.js?v=20261118"></script>
   <!-- 认证与云端同步 -->
-  <script src="js/auth.js?v=20261117b"></script>
+  <script src="js/auth.js?v=20261118"></script>
   <!-- 路由层 -->
-  <script src="js/router.js?v=20261117b"></script>
+  <script src="js/router.js?v=20261118"></script>
   <!-- 业务层 -->
-  <script src="js/app.js?v=20261117b"></script>
+  <script src="js/app.js?v=20261118"></script>
   <!-- 题库异步加载 + 启动应用：先出界面骨架，再拉题库，避免白屏等待 -->
   <script>
     (function () {
@@ -123,7 +123,7 @@
       }
 
       var s = document.createElement('script');
-      s.src = 'data/questions.js?v=20261117b';
+      s.src = 'data/questions.js?v=20261118';
       s.async = true;
       s.onload = start;
       s.onerror = function () { fail('题库加载失败'); };
